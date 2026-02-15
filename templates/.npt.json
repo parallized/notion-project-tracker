@@ -1,5 +1,7 @@
 {
   "project_name": "",
   "notion_database_id": "",
-  "auto_mode": false
+  "auto_mode": false,
+  "known_task_page_ids": [],
+  "last_discovery_at": ""
 }

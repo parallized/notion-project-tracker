@@ -19,6 +19,12 @@ codex mcp list
 
 If tools still don't appear after login, tell the user to restart their Codex session and retry.
 
+For higher query accuracy, this skill should prefer exact query via `scripts/notion_api.py`, which calls Notion REST `POST /v1/data_sources/{data_source_id}/query`.
+Auth/token priority for that exact query path:
+1. `NOTION_API_KEY` (recommended, single env var)
+Never persist secrets to `.npt.json`, source code, or logs.
+Note: `codex mcp login notion` authenticates MCP tool calls, but its OAuth token is internal to MCP and not exposed as a reusable shell token for REST requests.
+
 **Arguments (first token after `npt`, if provided):**
 - `sync` (default): Full cycle — validate workspace, find TODOs, execute them, report results.
 - `auto`: Toggle auto mode in `.npt.json` (`auto_mode: true/false`). Does NOT run sync.
@@ -59,7 +65,7 @@ Search for all top-level pages in the workspace. If the workspace has zero or ve
 1. Create a page titled `NPT` at the workspace root with content:
    - Heading: "NPT — Notion Project Tracker"
    - Text: "This workspace is managed by Notion Project Tracker (NPT)."
-   - Text: "Version: 0.1.0"
+   - Text: "Version: 0.1.1"
    - Text: "Initialized: {current date}"
    - Section: "Workspace Structure" — describing the 3 root items
    - Section: "Session Log" — empty, will be appended after each session
@@ -102,10 +108,13 @@ If `.npt.json` exists, read it. Expected format:
 {
   "project_name": "my-project",
   "notion_database_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-  "auto_mode": false
+  "auto_mode": false,
+  "known_task_page_ids": ["page-id-1", "page-id-2"],
+  "last_discovery_at": "2026-02-15T20:40:00Z"
 }
 ```
 `auto_mode` is optional (defaults to `false`).
+`known_task_page_ids` and `last_discovery_at` are optional discovery cache fields.
 
 If `.npt.json` does NOT exist, derive the project name from the basename of the current working directory.
 
@@ -118,7 +127,8 @@ Find the `概要` database, then query it for an entry matching the project name
 - If `.npt.json` does not exist, find the TODO database (matching the project name) directly under `项目`.
 - Update `上次同步` to the current date in the `概要` database.
 - Update `项目路径` to the current working directory.
-- Proceed to Phase C.
+- If argument is `init`, output success message and stop here (do not enter Phase C).
+- Otherwise proceed to Phase C.
 
 **If project NOT found:**
 1. Create a new TODO database directly under the `项目` page titled `{project_name}`.
@@ -129,7 +139,7 @@ Find the `概要` database, then query it for an entry matching the project name
      - **上次同步** (last_edited_time)
 2. Register the project in the `概要` database:
    - 项目名称, 标签, 技术栈, 项目路径, 上次同步
-3. Write `.npt.json` locally with the project name and the new TODO database ID (`auto_mode` defaults to `false`).
+3. Write `.npt.json` locally with the project name and the new TODO database ID (`auto_mode` defaults to `false`; initialize `known_task_page_ids` as `[]` and `last_discovery_at` as an empty string).
 4. If argument is `init`, output success message and stop here.
 5. Otherwise proceed to Phase C.
 
@@ -139,15 +149,45 @@ Find the `概要` database, then query it for an entry matching the project name
 
 ### C1: Query TODOs
 
-Query the project's TODO database for items where 状态 is one of:
-- `待办`, `队列中`, `进行中`, `需要更多信息`
+**Goal**: Find all tasks where `状态` is `待办`, `队列中`, `进行中`, or `需要更多信息`. Also collect `已阻塞` tasks for reporting only.
 
-Also collect items where 状态 = `已阻塞` for reporting only.
 Do NOT auto-change `已阻塞` tasks; the user must manually move them back to `待办` (or another active status) to re-queue.
 
 All items in an NPT-registered TODO database are considered NPT-managed. The database itself (direct child of `项目`) is the trust boundary.
 
-Sort results by creation time (newest first). Display creation time as `MM/DD HH:MM` based on the page's `createdTime` (ISO-8601).
+**Query strategy (API-only, no MCP fallback)**:
+1. Fetch the TODO database and parse its `collection://...` data source URL.
+   - In practice: resolve `.npt.json.notion_database_id` first, then `fetch` that database to read the concrete data source ID (e.g. `collection://dc18dd83-...`).
+2. Run local helper script exact query:
+   - Script path: `scripts/notion_api.py` (relative to this skill).
+   - Resolve it to absolute path first (example: `NPT_NOTION_HELPER="/abs/path/to/scripts/notion_api.py"`).
+   - Run:
+     ```bash
+     python3 "${NPT_NOTION_HELPER}" query-active \
+       --data-source-id "${DATA_SOURCE_ID}" \
+       --status-property "状态" \
+       --title-property "任务" \
+       --include-all
+     ```
+   - Token priority:
+     1. explicit `--access-token`
+     2. `NOTION_API_KEY` (highest priority)
+3. If API query cannot run or fails (missing token, unauthorized/forbidden/not-found/rate-limited/network-restricted/timeout), STOP this NPT run immediately:
+   - Do NOT fall back to MCP search or semantic discovery.
+   - Do NOT execute tasks based on partial/discovered data.
+   - Output a clear error with failure reason and remediation (`run npt init first if not initialized, then set NOTION_API_KEY`).
+4. Group successful exact-query results by status:
+   - Active (execute): `待办`, `队列中`, `进行中`, `需要更多信息`
+   - Blocked (report only): `已阻塞`
+   - Skip: `已完成`
+5. Persist discovery cache back to `.npt.json`:
+   - `known_task_page_ids`: all task page IDs returned by exact query
+   - `last_discovery_at`: current UTC time
+6. Query confidence:
+   - `high`: exact API query succeeded end-to-end
+   - API failure: no confidence score; terminate with error (no fallback path)
+
+Sort active results by creation time (newest first). Display creation time as `MM/DD HH:MM` based on `createdTime` when available.
 
 If argument is `status`, display the TODO list in a formatted table and stop.
 
@@ -183,7 +223,9 @@ For each selected TODO item:
 6. Report results back to the TODO item:
    - Set 状态 → `已完成`
    - Assign 0-5 标签 (reuse existing tags when possible)
-   - Prefer adding a comment with the result summary; if comments fail, append a divider (`---`) and a toggle block with the summary to the page content.
+   - Must write result summary as a comment. Do NOT use toggle/content fallback.
+   - If MCP comment API fails, use `scripts/notion_api.py create-comment` with `NOTION_API_KEY`.
+   - If comment still cannot be written, set 状态 → `已阻塞` and report `BLOCKED: cannot write required comment`.
 
 ### C4: Error Handling
 
@@ -193,7 +235,7 @@ If you cannot complete a TODO due to missing information:
 
 If you cannot complete a TODO due to a technical blocker:
 - Set 状态 → `已阻塞`
-- Report the blocker via comment or appended content: `BLOCKED: {reason}`
+- Report the blocker via comment: `BLOCKED: {reason}`
 
 ---
 

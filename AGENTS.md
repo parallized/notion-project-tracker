@@ -40,10 +40,13 @@ Check for `.npt.json` in the working directory:
 {
   "project_name": "my-project",
   "notion_database_id": "uuid-here",
-  "auto_mode": false
+  "auto_mode": false,
+  "known_task_page_ids": ["page-id-1", "page-id-2"],
+  "last_discovery_at": "2026-02-15T20:40:00Z"
 }
 ```
 `auto_mode` is optional (defaults to `false`).
+`known_task_page_ids` and `last_discovery_at` are optional discovery cache fields.
 
 If absent, derive project name from directory basename. Look up in `概要` database. If not registered, create a TODO database **directly under `项目`** with schema:
 
@@ -54,13 +57,17 @@ If absent, derive project name from directory basename. Look up in `概要` data
 | 标签     | multi_select     | Auto-tags on completion (0-5, ≤ 15 total types)          |
 | 上次同步 | last_edited_time | Auto-updated on edit                                     |
 
-Task descriptions = page content (body). Results reported via comments or toggle blocks.
+Task descriptions = page content (body). Results must be reported via comments (no toggle fallback).
 
-Register in `概要` and write `.npt.json`.
+Register in `概要` and write `.npt.json` (initialize `known_task_page_ids` to `[]` and `last_discovery_at` to an empty string for first run).
 
 ### 3. Execute TODOs
 
 Query for items where 状态 = `待办`, `队列中`, `进行中`, or `需要更多信息`. Collect `已阻塞` items for reporting only (never auto-change them).
+Use Notion API exact query only (via skill-local helper script `scripts/notion_api.py query-active`) with `NOTION_API_KEY`.
+Do not assume MCP OAuth login token is reusable in shell; treat it as internal to MCP unless the runtime explicitly exposes it.
+If API query is unavailable or fails, STOP and report error (`run npt init first if not initialized, then set NOTION_API_KEY`). Do not fall back to MCP semantic search.
+Query confidence is `high` only when exact API query succeeds.
 
 **Batch queue**: Before execution, mark all selected tasks as `队列中` to distinguish from tasks added during the session.
 
@@ -68,7 +75,7 @@ For each task:
 1. Fetch the page content (description). Read any images by downloading and analyzing them.
 2. Set 状态 → `进行中`.
 3. Execute the task in the codebase.
-4. Set 状态 → `已完成`, assign 0-5 标签, and report results via comment or toggle block.
+4. Set 状态 → `已完成`, assign 0-5 标签, and report results via comment only. If MCP comment fails, use `scripts/notion_api.py create-comment`.
 5. If info is missing → `需要更多信息` (append question template to page).
 6. If technically blocked → `已阻塞` (report blocker reason).
 
