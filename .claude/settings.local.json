@@ -11,7 +11,8 @@
       "mcp__notion__notion-update-page",
       "mcp__notion__notion-update-data-source",
       "mcp__notion__notion-create-comment",
-      "mcp__notion__notion-move-pages"
+      "mcp__notion__notion-move-pages",
+      "WebFetch(domain:prod-files-secure.s3.us-west-2.amazonaws.com)"
     ]
   },
   "enableAllProjectMcpServers": true,

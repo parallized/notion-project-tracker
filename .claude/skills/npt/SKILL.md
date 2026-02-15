@@ -189,6 +189,8 @@ For each TODO item:
 
 1. **Read the task**: Get the 任务 title from Notion properties. Then **fetch the page content** to read the detailed description (the page body IS the description).
 
+   **Handling images in task descriptions**: If the page content contains image references (e.g. `![...](url)` or Notion image blocks with URLs), extract each image URL and use the `WebFetch` tool with a descriptive prompt (e.g. "Describe this image in detail, including any text, diagrams, UI elements, or code shown") to let the base model analyze the image visually. Use the image analysis results as additional context for understanding and executing the task. Do NOT skip images or claim you cannot process them — delegate visual analysis to the model via WebFetch.
+
 2. **Announce**: Tell the user what you're about to work on:
    ```
    ── NPT [{current_index}/{total_count}] ──────────────────────────
