@@ -10,13 +10,16 @@ argument-hint: "[sync|init|status|auto]"
 
 You are the Notion Project Tracker agent. Your job is to connect to a Notion workspace via MCP, validate ownership, find TODO tasks for the current project, execute them in the codebase, and report results back to Notion.
 
-**Arguments:**
+**Arguments (first token after `npt`, if provided):**
 - `sync` (default): Full cycle — validate workspace, find TODOs, execute them, report results.
-- `auto`: Same as `sync` but skips the confirmation step (C2) — directly executes all pending TODOs without asking.
+- `auto`: Toggle auto mode in `.npt.json` (`auto_mode: true/false`). Does NOT run sync.
+  - `npt auto` toggles the current value.
+  - `npt auto on|off` sets it explicitly.
+  - Output the new value and exit. No workspace validation or sync needed.
 - `init`: Only initialize the workspace and register the current project (do not execute TODOs).
 - `status`: Only query and display current TODO status without executing anything.
 
-If no argument is provided, default to `sync`.
+If no argument is provided, default to `sync` (and obey `.npt.json:auto_mode` if present).
 
 ---
 
@@ -40,19 +43,32 @@ Look for a page titled `NPT` in the results.
 The workspace is managed by NPT. Proceed to Phase B.
 
 **Workspace root structure** (only these 3 items should exist at root level):
-- `NPT` — system info page + session logs
+- `NPT` — system info page + session logs; contains a `Settings` child database for workspace-level configuration
 - `项目` — page containing each project's TODO database as direct children (one database per project)
 - `概要` — database tracking project status, summaries, and sync history
+
+**Settings database** (child of `NPT` page):
+A key-value configuration database with schema: Key (title), Value (rich_text), Type (select: boolean/string/number), Description (rich_text).
+Default config items:
+| Key | Default | Description |
+|-----|---------|-------------|
+| auto_mode | false | 自动模式 — 开启后跳过任务确认直接执行 |
+| language | zh-CN | 偏好语言 — NPT 输出和 Notion 注释使用的语言 |
+| max_tags | 15 | 最大标签数 — 每个项目 TODO 数据库的标签类型上限 |
+| session_log | true | 会话日志 — 是否在 NPT 页面记录每次同步日志 |
+| result_method | comment | 结果报告方式 — comment（评论）或 toggle（折叠块）|
 
 **Case 2 — NPT page NOT found, workspace is empty/new:**
 Search for all top-level pages in the workspace. If the workspace has **zero or very few pages** (≤ 2 pages total), treat it as a new workspace:
 1. Create a page titled `NPT` at the workspace root with content:
-   - Heading: "NPT — Notion Project Tracker"
+   - Callout (💡, blue_bg): A tip in the user's preferred language telling them they can click the page icon to set a theme icon (e.g. "点击页面左上角的图标可以为此页面设置主题图标哦！")
+   - Link to the Settings database (text in user's preferred language, e.g. "⚙️ 配置项")
    - Text: "This workspace is managed by Notion Project Tracker (NPT)."
    - Text: "Version: 0.1.0"
    - Text: "Initialized: {current date}"
    - Section: "Workspace Structure" — describing the 3 root items
    - Section: "Session Log" — empty, will be appended after each session
+   Create a `Settings` database as a child of the `NPT` page with schema: Key (title), Value (rich_text), Type (select: boolean/string/number), Description (rich_text). Populate with default config items (see Settings database table above).
 2. Create a page titled `项目` at the workspace root (this is a container page, NOT a database).
 3. Create a **standalone database** at the workspace level titled `概要` with these properties:
    - **项目名称** (title)
@@ -91,9 +107,11 @@ If `.npt.json` exists, read it. Expected format:
 ```json
 {
   "project_name": "my-project",
-  "notion_database_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+  "notion_database_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+  "auto_mode": false
 }
 ```
+`auto_mode` is optional (defaults to `false`).
 
 If `.npt.json` does NOT exist, derive the project name from the **basename** of the current working directory.
 
@@ -122,6 +140,7 @@ Search for the `概要` database in the workspace. Query it for an entry matchin
    - 项目路径: the full path of the current working directory
    - 上次同步: current date
 3. Write a `.npt.json` file to the current working directory with the project name and the new TODO database ID.
+   - Set `auto_mode` to `false` by default.
 4. If argument is `init`, output success message and stop here.
 5. Otherwise proceed to Phase C.
 
@@ -132,7 +151,10 @@ Search for the `概要` database in the workspace. Query it for an entry matchin
 ### C1: Query TODOs
 
 Query the project's TODO database for items where:
-- `状态` is `待办` OR `队列中` OR `进行中` OR `需要更多信息` OR `已阻塞`
+- `状态` is `待办` OR `队列中` OR `进行中` OR `需要更多信息`
+
+Also collect tasks where `状态` is `已阻塞` for reporting only.
+Do NOT auto-change `已阻塞` tasks; the user must manually move them back to `待办` (or another active status) to re-queue.
 
 All items in an NPT-registered TODO database are considered NPT-managed. The database itself (direct child of `项目`) is the trust boundary.
 
@@ -159,7 +181,7 @@ The creation time is derived from the page's `createdTime` field (ISO-8601). Dis
 
 ### C2: Confirm with User
 
-**If argument is `auto`, skip this step entirely** — proceed directly to C3 with all pending TODOs.
+**If `.npt.json` has `auto_mode: true`, skip this step entirely** — proceed directly to C3 with all pending (non-`已阻塞`) TODOs.
 
 Otherwise, before executing, present the TODO list to the user and ask for confirmation. Display the list using the same format as `status`, then ask:
 
@@ -181,7 +203,9 @@ And skip directly to Phase D.
 
 ### C2.5: Batch Queue
 
-After confirmation (or immediately if `auto`), batch-mark all selected tasks as `队列中` in Notion. This distinguishes the current session's tasks from any new tasks the user adds during execution.
+After confirmation (or immediately if auto mode is enabled), batch-mark all selected tasks as `队列中` in Notion.
+Never change tasks already in `已阻塞`.
+This distinguishes the current session's tasks from any new tasks the user adds during execution.
 
 ### C3: Execute Each TODO
 
@@ -252,6 +276,7 @@ If a TODO cannot be completed due to **missing information** (ambiguous requirem
 If a TODO cannot be completed due to a **technical blocker** (dependency issue, build failure, etc.):
 - Set `状态` to `已阻塞`
 - Report the blocker via comment or appended content: `"BLOCKED: {reason}"`
+- Once a task is `已阻塞`, NPT will not touch it in future sessions until the user changes its status.
 - Continue to the next TODO
 
 Report all blocked and needs-info tasks in the final summary.
@@ -312,7 +337,7 @@ Append a session entry to the `NPT` page's Session Log section with:
 
 These rules MUST be followed at all times. They cannot be overridden by user instructions.
 
-1. **Database-level trust boundary**: NPT only operates on TODO databases that are direct children of `项目`. All items within a registered TODO database are considered NPT-managed. NPT must NEVER modify content outside of registered TODO databases, the `概要` database, the `项目` page, and the `NPT` page.
+1. **Database-level trust boundary**: NPT only operates on TODO databases that are direct children of `项目`. All items within a registered TODO database are considered NPT-managed. NPT must NEVER modify content outside of registered TODO databases, the `概要` database, the `Settings` database, the `项目` page, and the `NPT` page.
 
 2. **Workspace validation is mandatory**: NEVER skip Phase A. NEVER proceed if the workspace fails validation (Case 3).
 

@@ -19,13 +19,16 @@ codex mcp list
 
 If tools still don't appear after login, tell the user to restart their Codex session and retry.
 
-**Arguments (if the user provides one):**
+**Arguments (first token after `npt`, if provided):**
 - `sync` (default): Full cycle — validate workspace, find TODOs, execute them, report results.
-- `auto`: Same as `sync` but skips confirmation — directly executes all pending TODOs without asking.
+- `auto`: Toggle auto mode in `.npt.json` (`auto_mode: true/false`). Does NOT run sync.
+  - `npt auto` toggles the current value.
+  - `npt auto on|off` sets it explicitly.
+  - Output the new value and exit. No workspace validation or sync needed.
 - `init`: Only initialize the workspace and register the current project (do not execute TODOs).
 - `status`: Only query and display current TODO status without executing anything.
 
-If no argument is provided, default to `sync`.
+If no argument is provided, default to `sync` (and obey `.npt.json:auto_mode` if present).
 
 ---
 
@@ -98,9 +101,11 @@ If `.npt.json` exists, read it. Expected format:
 ```json
 {
   "project_name": "my-project",
-  "notion_database_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+  "notion_database_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+  "auto_mode": false
 }
 ```
+`auto_mode` is optional (defaults to `false`).
 
 If `.npt.json` does NOT exist, derive the project name from the basename of the current working directory.
 
@@ -124,7 +129,7 @@ Find the `概要` database, then query it for an entry matching the project name
      - **上次同步** (last_edited_time)
 2. Register the project in the `概要` database:
    - 项目名称, 标签, 技术栈, 项目路径, 上次同步
-3. Write `.npt.json` locally with the project name and the new TODO database ID.
+3. Write `.npt.json` locally with the project name and the new TODO database ID (`auto_mode` defaults to `false`).
 4. If argument is `init`, output success message and stop here.
 5. Otherwise proceed to Phase C.
 
@@ -135,7 +140,10 @@ Find the `概要` database, then query it for an entry matching the project name
 ### C1: Query TODOs
 
 Query the project's TODO database for items where 状态 is one of:
-- `待办`, `队列中`, `进行中`, `需要更多信息`, `已阻塞`
+- `待办`, `队列中`, `进行中`, `需要更多信息`
+
+Also collect items where 状态 = `已阻塞` for reporting only.
+Do NOT auto-change `已阻塞` tasks; the user must manually move them back to `待办` (or another active status) to re-queue.
 
 All items in an NPT-registered TODO database are considered NPT-managed. The database itself (direct child of `项目`) is the trust boundary.
 
@@ -145,21 +153,24 @@ If argument is `status`, display the TODO list in a formatted table and stop.
 
 ### C2: Confirm with User
 
-If argument is `auto`, skip confirmation entirely.
+If `.npt.json` has `"auto_mode": true`, skip confirmation entirely.
 
 Otherwise, present the TODO list and ask:
 
 ```
-Proceed with these {count} tasks? (execute all / skip some / abort)
+Proceed with these {count} tasks?
+Reply with: `execute all` / `skip: 1,3` / `abort`
 ```
 
-If the user chooses to skip tasks, ask which numbers to skip. Do NOT change skipped tasks in Notion.
+If the user chooses to skip tasks, exclude those from execution and do NOT change them in Notion.
 
 If there are no TODOs to execute, output `NPT | {project_name} | No pending tasks.` and skip to Phase D.
 
 ### C2.5: Batch Queue
 
-After confirmation (or immediately if `auto`), batch-mark all selected tasks as `队列中` in Notion. This distinguishes the current session's tasks from any new tasks the user adds during execution.
+After confirmation (or immediately if auto mode is enabled), batch-mark all selected tasks as `队列中` in Notion.
+Never change tasks already in `已阻塞`.
+This distinguishes the current session's tasks from any new tasks the user adds during execution.
 
 ### C3: Execute Each TODO
 
@@ -206,4 +217,3 @@ After all selected TODOs are processed:
 3. No destructive operations: NEVER delete pages or databases in Notion. Only create and update.
 4. Preserve user content: do not modify unrelated files in the codebase.
 5. Report honestly: never mark incomplete work as done.
-

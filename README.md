@@ -27,12 +27,16 @@ cd notion-project-tracker
 
 ```
 /npt              # 完整同步：验证 → 发现任务 → 确认 → 执行 → 回报
-/npt auto         # 自动模式：跳过确认，直接执行所有待办任务
+/npt auto         # auto 模式开关（持久化到 .npt.json）；不执行 sync
+/npt auto on      # 显式开启 auto 模式；不执行 sync
+/npt auto off     # 显式关闭 auto 模式；不执行 sync
 /npt init         # 仅初始化工作区和注册项目
 /npt status       # 仅查看当前任务状态
 ```
 
 首次在新项目中使用时，NPT 会自动在 Notion 中创建对应的 TODO 数据库并生成 `.npt.json` 配置文件。
+`auto` 模式会写入 `.npt.json` 的 `auto_mode` 字段（可选，默认 `false`）。
+开启后，后续执行 `/npt`（或 `npt sync`）会自动跳过确认步骤。
 
 ### Codex 使用
 
@@ -51,6 +55,8 @@ npt sync
 npt auto
 npt init
 ```
+
+提示：Codex 不支持终端交互式选择。当 NPT 询问确认时，直接在会话里回复 `execute all` / `skip: 1,3` / `abort`。
 
 ## 工作原理
 
@@ -79,6 +85,7 @@ NPT 管理的工作区根目录包含 3 个项：
 | 上次同步 | last_edited_time  | 自动记录页面最近编辑时间                     |
 
 任务描述写在页面内容中，执行结果通过评论或折叠块回报。
+注意：`已阻塞` 的任务不会被 NPT 自动重试或改动；需要你手动把状态改回 `待办`（或其他活动状态）才会再次进入队列。
 
 ## 项目结构
 

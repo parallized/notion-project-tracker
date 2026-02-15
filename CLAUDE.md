@@ -20,9 +20,9 @@ AGENTS.md                      — Codex compatibility
 - All Notion interactions go through the Notion MCP tools.
 - The `NPT` page is the workspace validation marker and system info hub.
 - All items within a registered TODO database are considered NPT-managed (database-level trust boundary).
-- The `.npt.json` file in target projects maps them to Notion databases.
+- The `.npt.json` file in target projects maps them to Notion databases. Optional `auto_mode` enables skipping confirmation by default.
 - Field names are localized (Chinese): 项目名称, 标签, 技术栈, 上次同步, 项目路径, 任务.
-- TODO database schema: 任务 (title), 状态 (select: 待办/队列中/进行中/需要更多信息/已阻塞/已完成), 标签 (multi_select, auto-generated on completion), 上次同步 (last_edited_time)
+- TODO database schema: 任务 (title), 状态 (select: 待办/队列中/进行中/需要更多信息/已阻塞/已完成), 标签 (multi_select, auto-generated on completion), 上次同步 (last_edited_time). `已阻塞` tasks are not auto-retried until manually unblocked by the user.
 
 ## Key Concepts
 

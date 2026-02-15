@@ -1,5 +1,6 @@
 # Device-local NPT config (use templates/.npt.json as template)
 .npt.json
+!templates/.npt.json
 
 # Claude Code local settings
 .claude/settings.local.json
