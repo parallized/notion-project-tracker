@@ -1,0 +1,8 @@
+# Device-local NPT config (use templates/.npt.json as template)
+.npt.json
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# macOS
+.DS_Store
