@@ -1,6 +1,6 @@
 # Notion Project Tracker (NPT)
 
-NPT 是一个 Claude Code 技能（`/npt`），通过 Notion MCP 管理项目 TODO。它会自动从 Notion 数据库中获取待办任务，在代码库中执行，并将结果写回 Notion。
+NPT 是一个技能（Claude Code: `/npt`，Codex: `npt`），通过 Notion MCP 管理项目 TODO。它会自动从 Notion 数据库中获取待办任务，在代码库中执行，并将结果写回 Notion。
 
 ## 安装
 
@@ -9,11 +9,17 @@ NPT 是一个 Claude Code 技能（`/npt`），通过 Notion MCP 管理项目 TO
 git clone <repo-url>
 cd notion-project-tracker
 
-# 全局安装技能（symlink 到 ~/.claude/skills/npt）
+# 全局安装技能（默认同时安装到 Claude + Codex）
 ./install.sh
+
+# 只安装 Claude 或 Codex
+./install.sh --claude
+./install.sh --codex
 ```
 
-安装后，可以在任意 Claude Code 会话中使用 `/npt`。
+安装后：
+- Claude Code 会话中使用 `/npt`
+- Codex 会话中通过提示词调用 `npt`（例如 `npt status` / `npt sync`）
 
 ## 使用方法
 
@@ -27,6 +33,24 @@ cd notion-project-tracker
 ```
 
 首次在新项目中使用时，NPT 会自动在 Notion 中创建对应的 TODO 数据库并生成 `.npt.json` 配置文件。
+
+### Codex 使用
+
+1) 确保 Notion MCP 已登录：
+
+```bash
+codex mcp add notion --url https://mcp.notion.com/mcp
+codex mcp login notion
+```
+
+2) 在目标项目目录启动 Codex，会话里输入（作为提示词）：
+
+```
+npt status
+npt sync
+npt auto
+npt init
+```
 
 ## 工作原理
 
@@ -60,6 +84,7 @@ NPT 管理的工作区根目录包含 3 个项：
 
 ```
 .claude/skills/npt/SKILL.md   — 核心技能定义（/npt 命令的全部逻辑）
+.codex/skills/npt/SKILL.md    — Codex 技能定义（npt）
 .mcp.json                     — Notion MCP 服务器配置
 templates/.npt.json            — 目标项目的配置模板
 install.sh                     — 全局安装脚本
@@ -74,4 +99,4 @@ NPT 按项目名称（非路径）匹配，`.npt.json` 是设备本地文件。�
 ## 兼容性
 
 - **Claude Code** — 通过 `/npt` 技能直接使用
-- **Codex** — 通过 `AGENTS.md` 提供指令兼容
+- **Codex** — 通过 `npt` 技能直接使用（也保留 `AGENTS.md` 作为指令兼容/安全边界说明）
