@@ -1,8 +1,8 @@
 # Notion Project Tracker (NPT)
 
-## 为什么这套 Skills 值得用
+## 简介
 
-NPT 不是又一个孤立的任务工具，而是把你已经在用的 Notion 变成 AI 可执行的项目中枢：
+NPT 不是又一个孤立的任务工具，而是把 Notion 变成 AI 可执行的项目中枢：
 
 1. Notion 页面天然支持文字、图片、视频、列表等自由排版，比纯 CLI 输入更适合把复杂需求讲清楚，减少“任务写不明白”的执行误差。
 2. 对非开发同学更友好，不需要先搭复杂工作流就能开始协作，用看得见的内容结构直接沉淀知识。
@@ -12,36 +12,42 @@ NPT 不是又一个孤立的任务工具，而是把你已经在用的 Notion �
 6. Notion 的交互体验和信息密度兼顾，不必重复造一个“能看但不好用”的管理界面。
 7. 个人知识库与项目执行打通，平时积累的笔记和灵感可以直接转成可执行任务，而不是停留在记录层。
 
-## README 头图提示词（Gemini）
+## README
 
-```text
-Create a cinematic product hero illustration for an open-source tool called “Notion Project Tracker (NPT)”.
-Scene: a bright modern workspace where a Notion-style kanban board (Chinese labels: 待办 / 队列中 / 进行中 / 已完成) flows into a terminal coding interface through luminous data ribbons.
-Visual metaphor: knowledge (docs, images, notes, checklists) is transformed into executable engineering actions and then synced back as traceable history.
-Include subtle UI motifs: comment bubbles, status chips, timeline log, cloud sync, mobile + desktop continuity.
-Mood: confident, elegant, practical, high signal-to-noise; avoid generic “AI brain” clichés.
-Color direction: warm neutral background, electric blue + emerald accents, crisp contrast, premium SaaS style.
-Composition: wide banner, strong focal point in center-left, clean negative space on right for title overlay.
-Style: semi-realistic isometric + interface collage, sharp details, soft global illumination, 4k, no watermark, no gibberish text.
-```
+![NPT header](docs/images/head.webp)
 
-NPT 是一个技能（Claude Code: `/npt`，Codex: `npt`），通过 Notion MCP + Notion REST 管理项目 TODO。它会自动从 Notion 数据库中获取待办任务，在代码库中执行，并将结果写回 Notion。
+NPT 是一个 Skill（Claude Code: `/npt`，Codex: `npt`），通过 Notion MCP + Notion REST 管理项目 TODO。它会自动从 Notion 数据库中获取待办任务，在代码库中执行，并将结果写回 Notion。
 
-## 最短路径（先跑通）
+## 怎么用
 
-按下面 5 步走，路径最短且不会卡在 API key 权限问题上：
+按下面 5 步走：
 
-1. 安装技能：`./install.sh`
-2. 登录 Notion MCP（Codex）：`codex mcp add notion --url https://mcp.notion.com/mcp && codex mcp login notion`
-3. **先执行初始化**（此步骤不依赖 `NOTION_API_KEY`）：
+1. 克隆该仓库并安装 skill: `./install.sh`
+2. 登录 Notion MCP (Codex): `codex mcp add notion --url https://mcp.notion.com/mcp && codex mcp login notion`
+3. 在你的项目目录 (文件夹名作为项目名) **先执行初始化**：
    - Claude: `/npt init`
-   - Codex: `npt init`
-4. 初始化完成后，再去 Notion 创建/配置 API key，并确保 key 对 `NPT` / `项目` / `概要` 以及项目 TODO 数据库有访问权限
-5. 导出 key 并执行：
+   - Codex: `$npt init`
+4. 初始化完成后, 再去 Notion 创建/配置 RestAPI key, 并确保 key 对 Notion MCP 创建的 `NPT` / `项目` / `概要` 以及项目 TODO 数据库有访问权限
+5. 导出 key 并配置环境变量:
    - `export NOTION_API_KEY="secret_..."`
-   - `npt status` / `npt sync`（或 Claude 使用 `/npt status` / `/npt`）
+   - `$npt status` / `$npt sync`（或 Claude 使用 `/npt status` / `/npt`）以检查是否配置完成
 
-这个顺序是为了避免死锁：先有工作区结构和项目数据库，再配 key 权限，最后再跑精确查询。
+这个 API key 有些麻烦，是因为 Notion MCP 尚不能很好 query 待办内容，需要补充 RestAPI 能力，也期待哪天完善 MCP 能力就免得这一遭环境变量配置
+
+## 安装详解
+
+```bash
+# 克隆仓库
+git clone <repo-url>
+cd notion-project-tracker
+
+# 全局安装技能（默认同时安装到 Claude + Codex）
+./install.sh
+
+# 只安装 Claude 或 Codex
+./install.sh --claude
+./install.sh --codex
+```
 
 ## 使用截图
 
@@ -61,26 +67,12 @@ Notion 中的 NPT 工作区结构（NPT / 概要 / 项目）：
 
 ![NPT status output](docs/images/npt-status-output.png)
 
-## 安装
-
-```bash
-# 克隆仓库
-git clone <repo-url>
-cd notion-project-tracker
-
-# 全局安装技能（默认同时安装到 Claude + Codex）
-./install.sh
-
-# 只安装 Claude 或 Codex
-./install.sh --claude
-./install.sh --codex
-```
-
 安装后：
+
 - Claude Code 会话中使用 `/npt`
 - Codex 会话中通过提示词调用 `npt`（例如 `npt status` / `npt sync`）
 
-## 使用方法
+## 使用指令
 
 在目标项目目录中运行：
 
@@ -111,14 +103,14 @@ npt status        # 仅查看当前任务状态
 
 ### Codex 使用
 
-1) 确保 Notion MCP 已登录：
+1. 确保 Notion MCP 已登录：
 
 ```bash
 codex mcp add notion --url https://mcp.notion.com/mcp
 codex mcp login notion
 ```
 
-2) 在目标项目目录启动 Codex，会话里输入（作为提示词）：
+2. 在目标项目目录启动 Codex，会话里输入（作为提示词）：
 
 ```
 npt status
@@ -129,13 +121,7 @@ npt init
 
 提示：Codex 不支持终端交互式选择。当 NPT 询问确认时，直接在会话里回复 `execute all` / `skip: 1,3` / `abort`。
 
-### 精确查询（推荐：单变量）
-
-最省事的方式是只配置 1 个环境变量：
-
-```bash
-export NOTION_API_KEY="secret_..."
-```
+### 解释一下为什么需要 API
 
 配置后直接运行 `npt status` / `npt sync` 即可走精确查询。
 建议首次使用先 `npt init`，再生成并配置 `NOTION_API_KEY`，以确保页面访问权限覆盖新建的 NPT 结构。
@@ -148,33 +134,24 @@ export NOTION_API_KEY="secret_..."
 3. **任务执行** — 逐个执行待办任务（写代码、修 bug、加功能等）。支持图片描述：任务中的图片会通过 AI 模型进行视觉分析
 4. **结果回报** — 将执行结果以评论写回 Notion 页面（不使用折叠块）
 
-## 查询准确性说明（重要）
-
-- 当前 Notion MCP 的 `search` 本质是语义/关键词检索，不等价于“按 `状态` 属性精确过滤”。
-- NPT 的查询策略是 API-only：通过技能脚本 `notion_api.py query-active` 走 Notion REST 精确查询，使用 `NOTION_API_KEY`。
-- 如果 API 查询不可用或失败，NPT 会直接停止，不再使用 MCP 语义搜索兜底。
-- 查询置信度仅在 API 查询成功时输出 `high`。
-- 这意味着：没有 API 查询结果就没有任务列表，也不会进入执行阶段。
-- 如果你的场景要求严格全量，建议在运行环境接入支持属性过滤的数据源查询能力（或 Notion 官方 Database Query API）。
-
 ## Notion 工作区结构
 
 NPT 管理的工作区根目录包含 3 个项：
 
-| 名称   | 类型     | 用途                              |
-|--------|----------|-----------------------------------|
-| `NPT`  | 页面     | 系统信息 + 会话日志               |
-| `项目` | 页面     | 容器页，每个项目的 TODO 数据库是其直接子项 |
-| `概要` | 数据库   | 项目元数据（标签、技术栈、同步时间、摘要） |
+| 名称   | 类型   | 用途                                       |
+| ------ | ------ | ------------------------------------------ |
+| `NPT`  | 页面   | 系统信息 + 会话日志                        |
+| `项目` | 页面   | 容器页，每个项目的 TODO 数据库是其直接子项 |
+| `概要` | 数据库 | 项目元数据（标签、技术栈、同步时间、摘要） |
 
 ### TODO 数据库 Schema
 
-| 字段     | 类型              | 说明                                         |
-|----------|-------------------|----------------------------------------------|
-| 任务     | title             | 任务名称                                     |
-| 状态     | select            | 待办 / 队列中 / 进行中 / 需要更多信息 / 已阻塞 / 已完成 |
-| 标签     | multi_select      | 完成时自动生成的分类标签（0-5 个）           |
-| 上次同步 | last_edited_time  | 自动记录页面最近编辑时间                     |
+| 字段     | 类型             | 说明                                                    |
+| -------- | ---------------- | ------------------------------------------------------- |
+| 任务     | title            | 任务名称                                                |
+| 状态     | select           | 待办 / 队列中 / 进行中 / 需要更多信息 / 已阻塞 / 已完成 |
+| 标签     | multi_select     | 完成时自动生成的分类标签（0-5 个）                      |
+| 上次同步 | last_edited_time | 自动记录页面最近编辑时间                                |
 
 任务描述写在页面内容中，执行结果通过评论回报。
 注意：`已阻塞` 的任务不会被 NPT 自动重试或改动；需要你手动把状态改回 `待办`（或其他活动状态）才会再次进入队列。
@@ -200,4 +177,4 @@ NPT 按项目名称（非路径）匹配，`.npt.json` 是设备本地文件。�
 ## 兼容性
 
 - **Claude Code** — 通过 `/npt` 技能直接使用
-- **Codex** — 通过 `npt` 技能直接使用（也保留 `AGENTS.md` 作为指令兼容/安全边界说明）
+- **Codex** — 通过 `$npt` 技能直接使用（也保留 `AGENTS.md` 作为指令兼容/安全边界说明）
