@@ -68,10 +68,11 @@ Look for a page titled `NPT` in the results.
 **Case 1 — NPT page found:**
 The workspace is managed by NPT. Proceed to Phase B.
 
-Workspace root structure (only these 3 items should exist at root level):
+Workspace root structure (only these 4 items should exist at root level):
 - `NPT` — system info page + session logs
 - `项目` — page containing each project's TODO database as direct children (one database per project)
 - `概要` — database tracking project status, summaries, and sync history
+- `IDEA` — database for cross-project ideas and capability insights
 
 **Case 2 — NPT page NOT found, workspace is empty/new:**
 Search for all top-level pages in the workspace. If the workspace has zero or very few pages (≤ 2 pages total), treat it as a new workspace:
@@ -83,14 +84,20 @@ Search for all top-level pages in the workspace. If the workspace has zero or ve
    - Section: "Workspace Structure" — describing the 3 root items
    - Section: "Session Log" — empty, will be appended after each session
 2. Create a page titled `项目` at the workspace root (container page, NOT a database).
-3. Create a standalone database at the workspace level titled `概要` with these properties:
+3. Create a standalone database at the workspace level titled `IDEA` with these properties:
+   - **想法** (title)
+   - **标签** (multi_select)
+   - **状态** (select) — `灵感`, `探索中`, `已验证`, `已落地`, `已搁置`
+   - **优先级** (select) — `高`, `中`, `低`
+   - **关联项目** (relation to `概要`)
+4. Create a standalone database at the workspace level titled `概要` with these properties:
    - **项目名称** (title)
    - **标签** (select) — project theme tag (e.g. 开发工具, Web应用, 库/框架, 自动化, 数据分析, AI/ML, 移动应用, 其他)
    - **技术栈** (multi_select) — 1-3 tech stack tags (e.g. Codex, Claude Code, Notion MCP, TypeScript, Python, React, Node.js, Rust)
    - **上次同步** (date)
    - **项目路径** (rich_text)
    Project summaries are written as page content of each entry (not a property).
-4. Proceed to Phase B.
+5. Proceed to Phase B.
 
 **Case 3 — NPT page NOT found, workspace has existing content:**
 STOP IMMEDIATELY. Output:
@@ -166,6 +173,7 @@ Find the `概要` database, then query it for an entry matching the project name
      - **任务** (title)
      - **状态** (select) — `待办`, `队列中`, `进行中`, `需要更多信息`, `已阻塞`, `已完成`
      - **标签** (multi_select) — 0-5 tags auto-generated on completion (keep total tag types ≤ 15)
+     - **想法引用** (relation to `IDEA`) — optional links to related ideas
      - **上次同步** (last_edited_time)
 2. Register the project in the `概要` database:
    - 项目名称, 标签, 技术栈, 项目路径, 上次同步
@@ -285,7 +293,7 @@ After all selected TODOs are processed:
 
 ## SAFETY RULES (NON-NEGOTIABLE)
 
-1. Database-level trust boundary: ONLY operate on TODO databases that are direct children of `项目`. NEVER modify content outside registered TODO databases, the `概要` database, the `项目` page, and the `NPT` page.
+1. Database-level trust boundary: ONLY operate on TODO databases that are direct children of `项目`. NEVER modify content outside registered TODO databases, the `概要` database, the `IDEA` database, the `项目` page, and the `NPT` page.
 2. Workspace validation is mandatory: NEVER skip Phase A. NEVER proceed if validation fails (Case 3).
 3. No destructive operations: NEVER delete pages or databases in Notion. Only create and update.
 4. Preserve user content: do not modify unrelated files in the codebase.

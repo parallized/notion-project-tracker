@@ -27,12 +27,29 @@ NPT 是一个 Skill（Claude Code: `/npt`，Codex: `npt`），通过 Notion MCP 
 3. 在你的项目目录 (文件夹名作为项目名) **先执行初始化**：
    - Claude: `/npt init`
    - Codex: `$npt init`
-4. 初始化完成后, 再去 Notion 创建/配置 RestAPI key, 并确保 key 对 Notion MCP 创建的 `NPT` / `项目` / `概要` 以及项目 TODO 数据库有访问权限
+4. 初始化完成后, 再去 Notion 创建/配置 RestAPI key, 并确保 key 对 Notion MCP 创建的 `NPT` / `项目` / `概要` / `IDEA` 以及项目 TODO 数据库有访问权限
 5. 导出 key 并配置环境变量:
    - `export NOTION_API_KEY="secret_..."`
    - `$npt status` / `$npt sync`（或 Claude 使用 `/npt status` / `/npt`）以检查是否配置完成
 
 这个 API key 有些麻烦，是因为 Notion MCP 尚不能很好 query 待办内容，需要补充 RestAPI 能力，也期待哪天完善 MCP 能力就免得这一遭环境变量配置
+
+## 最小执行单元（首次跑通）
+
+如果你想最快体验一次端到端闭环，只要完成下面 4 步：
+
+1. 新建并进入项目文件夹（文件夹名就是项目名）
+2. 在 Claude/Codex 里执行 `npt init`（创建并初始化 NPT 专用工作区结构）
+3. 在 Notion Dashboard 创建 API key，并设置 `NOTION_API_KEY`
+4. 在 Notion 项目 TODO 库新建 1 条 `待办`，回到 CLI 执行 `npt`
+
+### 正常循环（Daily Loop）
+
+1. 在 Notion 写任务单，并把要执行的任务设为 `待办`
+2. 在 Claude/Codex 输入 `npt`
+3. 在 Notion 评论与会话日志里验收结果，再继续追加后续任务
+
+这个循环的核心价值是“边验收边推进”：你可以做一个验收一个，AI 完成后会把结果回写到 Notion；同时你也可以在 AI 执行期间继续往待办里追加后续任务。
 
 ## 安装详解
 
@@ -51,21 +68,21 @@ cd notion-project-tracker
 
 ## 使用截图
 
-Notion MCP 授权页（Codex）：
+初始化成功（`npt init`）：
 
-![Notion MCP 授权](docs/images/notion-mcp-auth.png)
+![NPT init output](docs/images/case-init.png)
 
-Claude `/npt` 命令可见性：
+开始执行任务（将任务设为 `待办`）：
 
-![Claude slash command](docs/images/claude-slash-command.png)
+![NPT execute task](docs/images/case-execute.png)
 
-Notion 中的 NPT 工作区结构（NPT / 概要 / 项目）：
+交付详情（状态、标签、评论）：
 
-![Notion workspace structure](docs/images/notion-workspace-structure.png)
+![NPT delivery detail](docs/images/case-delivery-detail.png)
 
-任务汇总确认界面示例：
+交付结果总览（任务列表）：
 
-![NPT status output](docs/images/npt-status-output.png)
+![NPT delivery overview](docs/images/case-delivery-overview.png)
 
 安装后：
 
@@ -136,13 +153,14 @@ npt init
 
 ## Notion 工作区结构
 
-NPT 管理的工作区根目录包含 3 个项：
+NPT 管理的工作区根目录包含 4 个项：
 
-| 名称   | 类型   | 用途                                       |
-| ------ | ------ | ------------------------------------------ |
-| `NPT`  | 页面   | 系统信息 + 会话日志                        |
-| `项目` | 页面   | 容器页，每个项目的 TODO 数据库是其直接子项 |
-| `概要` | 数据库 | 项目元数据（标签、技术栈、同步时间、摘要） |
+| 名称   | 类型   | 用途                                           |
+| ------ | ------ | ---------------------------------------------- |
+| `NPT`  | 页面   | 系统信息 + 会话日志                            |
+| `项目` | 页面   | 容器页，每个项目的 TODO 数据库是其直接子项     |
+| `概要` | 数据库 | 项目元数据（标签、技术栈、同步时间、摘要）     |
+| `IDEA` | 数据库 | 跨项目想法池（灵感沉淀、优先级、关联项目与任务） |
 
 ### TODO 数据库 Schema
 
@@ -151,6 +169,7 @@ NPT 管理的工作区根目录包含 3 个项：
 | 任务     | title            | 任务名称                                                |
 | 状态     | select           | 待办 / 队列中 / 进行中 / 需要更多信息 / 已阻塞 / 已完成 |
 | 标签     | multi_select     | 完成时自动生成的分类标签（0-5 个）                      |
+| 想法引用 | relation          | 关联 IDEA 数据库中的想法条目（可选）                    |
 | 上次同步 | last_edited_time | 自动记录页面最近编辑时间                                |
 
 任务描述写在页面内容中，执行结果通过评论回报。

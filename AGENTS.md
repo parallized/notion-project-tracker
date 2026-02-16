@@ -40,8 +40,8 @@ When the user asks to "run npt", "sync tasks", "check todos", or similar — fol
 
 Search the Notion workspace for a page titled `NPT` (query: `NPT Notion Project Tracker`).
 
-- **Found**: The workspace is NPT-managed. Workspace root has 3 items: `NPT` (page), `项目` (page), `概要` (database).
-- **Not found + empty workspace** (≤ 2 pages): Initialize by creating `NPT` page, `项目` page, and `概要` database (schema: 项目名称, 标签, 技术栈, 上次同步, 项目路径; summaries as page content).
+- **Found**: The workspace is NPT-managed. Workspace root has 4 items: `NPT` (page), `项目` (page), `概要` (database), `IDEA` (database).
+- **Not found + empty workspace** (≤ 2 pages): Initialize by creating `NPT` page, `项目` page, `IDEA` database（想法, 标签, 状态, 优先级, 关联项目）, and `概要` database (schema: 项目名称, 标签, 技术栈, 上次同步, 项目路径; summaries as page content).
 - **Not found + has content**: STOP. Do not modify a workspace that NPT did not create.
 
 ### 2. Resolve Project
@@ -69,6 +69,7 @@ If absent, derive project name from directory basename. Look up in `概要` data
 | 任务     | title            | Task name                                                |
 | 状态     | select           | 待办, 队列中, 进行中, 需要更多信息, 已阻塞, 已完成       |
 | 标签     | multi_select     | Auto-tags on completion (0-5, ≤ 15 total types)          |
+| 想法引用 | relation         | Optional relation to IDEA database                        |
 | 上次同步 | last_edited_time | Auto-updated on edit                                     |
 
 Task descriptions = page content (body). Results must be reported via comments (no toggle fallback).
@@ -104,7 +105,7 @@ If `auto_mode: true`, skip user confirmation. Otherwise, present the task list a
 
 ## Safety Rules
 
-- NEVER modify Notion content outside of registered TODO databases, the `概要` database, the `项目` page, and the `NPT` page.
+- NEVER modify Notion content outside of registered TODO databases, the `概要` database, the `IDEA` database, the `项目` page, and the `NPT` page.
 - NEVER skip workspace validation.
 - NEVER delete Notion pages or databases.
 - NEVER delete a database/page via MCP/API when it contains (or may contain) `>= 3` child pages/databases; provide manual Notion UI deletion steps instead.
