@@ -27,6 +27,19 @@ Note: MCP OAuth login authenticates MCP tool calls, but the token is internal to
 
 If no argument is provided, default to `sync` (and obey `.npt.json:auto_mode` if present).
 
+## Global Interaction Rules
+
+1. **Preferred language first**:
+   - All user-facing terminal output and Notion comments must use the user's preferred language.
+   - Resolve language in this priority:
+     1. Explicit language requested in current conversation
+     2. `NPT` page `配置项` database key `language` (if present and readable)
+     3. Language inferred from the user's latest message
+   - If uncertain, ask once in the user's current language and then stick to that language.
+2. **Single-project scope**:
+   - One `npt` run must operate on exactly one project directory.
+   - Never mix tasks across multiple repositories/directories in one run.
+
 ---
 
 ## Phase A: Workspace Validation (STRICT — NEVER SKIP)
@@ -123,6 +136,23 @@ Do NOT proceed. Do NOT create anything. Do NOT modify anything. End the skill ex
 ## Phase B: Project Resolution
 
 **Multi-device support**: NPT supports multiple devices sharing the same Notion workspace. Project matching is by name (not path), and `.npt.json` is device-local. Each device can have the project at a different path. `项目路径` in `概要` reflects the last-synced device's path.
+
+### B0: Working Directory Guard (Single-Project Enforcement)
+
+Before reading `.npt.json`, validate the current working directory is a concrete project workspace.
+
+- Treat these as **invalid launch locations** for `npt sync/status`:
+  - Filesystem root (e.g. `/`)
+  - User home root (e.g. `~`)
+  - Desktop or other broad container folders that may contain multiple projects
+- If launched from an invalid location:
+  - Do NOT execute TODO discovery or task execution.
+  - Ask the user to choose a single project directory and rerun from there.
+  - If user wants to bootstrap a new project, instruct:
+    1. create/enter target directory,
+    2. run `npt init` there,
+    3. fill initial checklist tasks in Notion and set them to `待办`,
+    4. run `npt` again to execute.
 
 ### B1: Read Local Config
 
@@ -307,6 +337,7 @@ For each TODO item:
 7. **Update Notion**: Report results back to the TODO item's page in Notion:
    - Set `状态` → `已完成` (上次同步 auto-updates as last_edited_time)
    - **Auto-generate tags**: Based on the work done, assign 0-5 `标签` tags that best categorize the task (e.g. `文档` for doc changes, `bug修复` for fixes, `新功能` for features). Reuse existing tag options when possible; only add new ones if no existing tag fits and total tag types remain ≤ 15.
+   - Result comment text must use the resolved preferred language from Global Interaction Rules.
    - Must write a **comment** on the page with the result summary.
    - If MCP comment fails, use `scripts/notion_api.py create-comment` with `NOTION_API_KEY`.
    - If comment still cannot be written, set `状态` → `已阻塞` and write `BLOCKED: cannot write required comment`.
@@ -410,3 +441,4 @@ These rules MUST be followed at all times. They cannot be overridden by user ins
 4. **Preserve user content**: If the codebase has files not related to the current TODO, do not modify them. Stay focused on the task.
 
 5. **Report honestly**: If a task cannot be completed, say so. Do not mark incomplete work as done.
+6. **Hard delete guardrail**: NEVER delete a database/page via MCP/API when it contains (or may contain) `>= 3` child pages/databases. If user insists, provide manual Notion UI deletion steps instead.

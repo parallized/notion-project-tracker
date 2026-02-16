@@ -1,5 +1,30 @@
 # Notion Project Tracker (NPT)
 
+## 为什么这套 Skills 值得用
+
+NPT 不是又一个孤立的任务工具，而是把你已经在用的 Notion 变成 AI 可执行的项目中枢：
+
+1. Notion 页面天然支持文字、图片、视频、列表等自由排版，比纯 CLI 输入更适合把复杂需求讲清楚，减少“任务写不明白”的执行误差。
+2. 对非开发同学更友好，不需要先搭复杂工作流就能开始协作，用看得见的内容结构直接沉淀知识。
+3. 可复用 Notion 的模板、AI 能力和集成生态，NPT 只是执行层，把已有组织资产连到编码流程里。
+4. 云端共享 + 权限管理 + 多端访问，手机补充素材、电脑推进实现可以无缝衔接。
+5. AI 工作过程可追溯，任务状态、执行结果、评论都沉淀在同一处，后续复盘和继续执行成本低。
+6. Notion 的交互体验和信息密度兼顾，不必重复造一个“能看但不好用”的管理界面。
+7. 个人知识库与项目执行打通，平时积累的笔记和灵感可以直接转成可执行任务，而不是停留在记录层。
+
+## README 头图提示词（Gemini）
+
+```text
+Create a cinematic product hero illustration for an open-source tool called “Notion Project Tracker (NPT)”.
+Scene: a bright modern workspace where a Notion-style kanban board (Chinese labels: 待办 / 队列中 / 进行中 / 已完成) flows into a terminal coding interface through luminous data ribbons.
+Visual metaphor: knowledge (docs, images, notes, checklists) is transformed into executable engineering actions and then synced back as traceable history.
+Include subtle UI motifs: comment bubbles, status chips, timeline log, cloud sync, mobile + desktop continuity.
+Mood: confident, elegant, practical, high signal-to-noise; avoid generic “AI brain” clichés.
+Color direction: warm neutral background, electric blue + emerald accents, crisp contrast, premium SaaS style.
+Composition: wide banner, strong focal point in center-left, clean negative space on right for title overlay.
+Style: semi-realistic isometric + interface collage, sharp details, soft global illumination, 4k, no watermark, no gibberish text.
+```
+
 NPT 是一个技能（Claude Code: `/npt`，Codex: `npt`），通过 Notion MCP + Notion REST 管理项目 TODO。它会自动从 Notion 数据库中获取待办任务，在代码库中执行，并将结果写回 Notion。
 
 ## 最短路径（先跑通）

@@ -22,6 +22,18 @@ When the user asks to "run npt", "sync tasks", "check todos", or similar — fol
 - `init`: Initialize workspace and register current project only (no execution).
 - `status`: Display current TODO status without executing.
 
+## Interaction Rules
+
+- Preferred language first:
+  - All user-facing terminal output and Notion comments must use the user's preferred language.
+  - Resolve language in this priority:
+    1. Explicit language requested in current conversation
+    2. `NPT` page `配置项` database key `language` (if present and readable)
+    3. Language inferred from the user's latest message
+- Single-project scope:
+  - One `npt` run must operate on exactly one project directory.
+  - Never run sync/status from broad container paths like `/`, `~`, `~/Desktop`; ask user to enter a concrete project directory first.
+
 ## Workflow Summary
 
 ### 1. Validate Workspace (NEVER SKIP)
@@ -33,6 +45,8 @@ Search the Notion workspace for a page titled `NPT` (query: `NPT Notion Project 
 - **Not found + has content**: STOP. Do not modify a workspace that NPT did not create.
 
 ### 2. Resolve Project
+
+Before reading `.npt.json`, validate current directory is a concrete project workspace. If launched from `/`, `~`, `~/Desktop` (or similarly broad directory), stop and ask user to choose a single project directory. If needed, guide user to run `npt init` in that target directory first.
 
 Check for `.npt.json` in the working directory:
 
@@ -93,4 +107,5 @@ If `auto_mode: true`, skip user confirmation. Otherwise, present the task list a
 - NEVER modify Notion content outside of registered TODO databases, the `概要` database, the `项目` page, and the `NPT` page.
 - NEVER skip workspace validation.
 - NEVER delete Notion pages or databases.
+- NEVER delete a database/page via MCP/API when it contains (or may contain) `>= 3` child pages/databases; provide manual Notion UI deletion steps instead.
 - NEVER mark incomplete work as done.
