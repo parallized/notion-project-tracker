@@ -16,7 +16,7 @@ NPT 不是又一个孤立的任务工具，而是把 Notion 变成 AI 可执行�
 
 ![NPT header](docs/images/head.webp)
 
-NPT 是一个 Skill（Claude Code: `/npt`，Codex: `npt`），通过 Notion MCP + Notion REST 管理项目 TODO。它会自动从 Notion 数据库中获取待办任务，在代码库中执行，并将结果写回 Notion。
+NPT 是一个 Skill（Claude Code: `/npt`，Codex: `$npt` / `npt` 提示词调用），通过 Notion MCP + Notion REST 管理项目 TODO。它会自动从 Notion 数据库中获取待办任务，在代码库中执行，并将结果写回 Notion。
 
 ## 怎么用
 
@@ -87,7 +87,7 @@ cd notion-project-tracker
 安装后：
 
 - Claude Code 会话中使用 `/npt`
-- Codex 会话中通过提示词调用 `npt`（例如 `npt status` / `npt sync`）
+- Codex 会话中通过提示词调用 `$npt` 或 `npt`（例如 `$npt status` / `npt sync`）
 
 ## 使用指令
 
@@ -136,7 +136,23 @@ npt auto
 npt init
 ```
 
+3. 调研结论（截至 2026-02-16）：
+- Codex 当前不支持像 Claude 那样注册自定义 `/npt` slash command。
+- 在 Codex 中请使用 `$npt ...` 或 `npt ...` 触发技能。
+
 提示：Codex 不支持终端交互式选择。当 NPT 询问确认时，直接在会话里回复 `execute all` / `skip: 1,3` / `abort`。
+
+### 全局配置项（NPT 页面）
+
+NPT 会读取 `NPT` 页面下 `配置项` 数据库作为工作区级默认值。常用键：
+
+- `language`：默认输出与评论语言
+- `auto_mode`：默认是否跳过确认
+- `max_tags`：标签类型上限（NPT 会强制不超过 15）
+- `session_log`：是否写入 NPT 会话日志
+- `result_method`：结果回写方式（仅支持 `comment`）
+
+优先级：用户本轮明确要求 > 本地 `.npt.json` > 工作区 `配置项` > 内置默认值。
 
 ### 解释一下为什么需要 API
 
@@ -149,7 +165,7 @@ npt init
 1. **工作区验证** — 检查 Notion 工作区是否由 NPT 管理（通过 `NPT` 页面标识）
 2. **项目解析** — 通过 `.npt.json` 或目录名匹配对应的 Notion TODO 数据库
 3. **任务执行** — 逐个执行待办任务（写代码、修 bug、加功能等）。支持图片描述：任务中的图片会通过 AI 模型进行视觉分析
-4. **结果回报** — 将执行结果以评论写回 Notion 页面（不使用折叠块）
+4. **结果回报** — 将执行结果以评论写回 Notion 页面（不使用折叠块）；优先走 `NOTION_API_KEY` 的 REST 评论路径，确保评论作者为 NPT integration（便于收件箱通知与审计）
 
 ## Notion 工作区结构
 

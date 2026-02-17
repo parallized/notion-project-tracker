@@ -30,6 +30,11 @@ When the user asks to "run npt", "sync tasks", "check todos", or similar — fol
     1. Explicit language requested in current conversation
     2. `NPT` page `配置项` database key `language` (if present and readable)
     3. Language inferred from the user's latest message
+- Global config precedence:
+  - Read workspace-level config from `NPT` page `配置项` database (`Key -> Value`) before local execution.
+  - Supported keys: `language`, `auto_mode`, `max_tags`, `session_log`, `result_method`.
+  - Precedence: explicit user instruction > local `.npt.json` > `配置项` > built-in defaults.
+  - `result_method` is hard-limited to `comment`; invalid values must be ignored and treated as `comment`.
 - Single-project scope:
   - One `npt` run must operate on exactly one project directory.
   - Never run sync/status from broad container paths like `/`, `~`, `~/Desktop`; ask user to enter a concrete project directory first.
@@ -40,13 +45,15 @@ When the user asks to "run npt", "sync tasks", "check todos", or similar — fol
 
 Search the Notion workspace for a page titled `NPT` (query: `NPT Notion Project Tracker`).
 
-- **Found**: The workspace is NPT-managed. Workspace root has 4 items: `NPT` (page), `项目` (page), `概要` (database), `IDEA` (database).
+- **Found**: The workspace is NPT-managed. Workspace root has 4 items: `NPT` (page, with `配置项`/`系统信息`/`会话日志` child DBs), `项目` (page), `概要` (database), `IDEA` (database).
 - **Not found + empty workspace** (≤ 2 pages): Initialize by creating `NPT` page, `项目` page, `IDEA` database（想法, 标签, 状态, 优先级, 关联项目）, and `概要` database (schema: 项目名称, 标签, 技术栈, 上次同步, 项目路径; summaries as page content).
 - **Not found + has content**: STOP. Do not modify a workspace that NPT did not create.
 
 ### 2. Resolve Project
 
 Before reading `.npt.json`, validate current directory is a concrete project workspace. If launched from `/`, `~`, `~/Desktop` (or similarly broad directory), stop and ask user to choose a single project directory. If needed, guide user to run `npt init` in that target directory first.
+
+Before consuming `.npt.json`, read global defaults from `NPT` page `配置项` database.
 
 Check for `.npt.json` in the working directory:
 
@@ -59,7 +66,7 @@ Check for `.npt.json` in the working directory:
   "last_discovery_at": "2026-02-15T20:40:00Z"
 }
 ```
-`auto_mode` is optional (defaults to `false`).
+`auto_mode` is optional. If missing, inherit from `配置项.auto_mode` (default `false`).
 `known_task_page_ids` and `last_discovery_at` are optional discovery cache fields.
 
 If absent, derive project name from directory basename. Look up in `概要` database. If not registered, create a TODO database **directly under `项目`** with schema:
@@ -90,18 +97,18 @@ For each task:
 1. Fetch the page content (description). Read any images by downloading and analyzing them.
 2. Set 状态 → `进行中`.
 3. Execute the task in the codebase.
-4. Set 状态 → `已完成`, assign 0-5 标签, and report results via comment only. If MCP comment fails, use `scripts/notion_api.py create-comment`.
+4. Set 状态 → `已完成`, assign 0-5 标签, and report results via comment only. Prefer `scripts/notion_api.py create-comment` first so the comment author is NPT integration; if REST comment fails, fallback to MCP comment API.
 5. If info is missing → `需要更多信息` (append question template to page).
 6. If technically blocked → `已阻塞` (report blocker reason).
 
-If `auto_mode: true`, skip user confirmation. Otherwise, present the task list and ask before proceeding.
+If effective `auto_mode: true` (local `.npt.json` overrides global `配置项`), skip user confirmation. Otherwise, present the task list and ask before proceeding.
 
 ### 4. Report
 
 1. Output a terminal summary (completed / needs info / blocked / remaining).
 2. Update `概要` entry: set `上次同步`, replace page content with a ~100-char project slogan.
 3. Append session entry to the project's TODO database page content.
-4. Append session entry to the `NPT` page Session Log.
+4. Append session entry to the `NPT` page Session Log only when effective `session_log` is not `false`.
 
 ## Safety Rules
 

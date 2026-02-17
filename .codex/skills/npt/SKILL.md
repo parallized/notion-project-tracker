@@ -34,7 +34,7 @@ Note: `codex mcp login notion` authenticates MCP tool calls, but its OAuth token
 - `init`: Only initialize the workspace and register the current project (do not execute TODOs).
 - `status`: Only query and display current TODO status without executing anything.
 
-If no argument is provided, default to `sync` (and obey `.npt.json:auto_mode` if present).
+If no argument is provided, default to `sync` (and obey effective `auto_mode`, resolved by precedence rules below).
 
 ## Global Interaction Rules
 
@@ -48,6 +48,19 @@ If no argument is provided, default to `sync` (and obey `.npt.json:auto_mode` if
 2. **Single-project scope**:
    - One `npt` run must operate on exactly one project directory.
    - Never mix tasks across multiple repositories/directories in one run.
+3. **Global config precedence**:
+   - Read workspace-level config from `NPT` page `配置项` database into `GLOBAL_CONFIG` (`Key` -> `Value`).
+   - Supported keys:
+     - `language`: preferred output/comment language fallback
+     - `auto_mode`: default confirmation behavior
+     - `max_tags`: max tag type count cap (clamp to `1..15`, default `15`)
+     - `session_log`: whether to append session logs to NPT session log DB (default `true`)
+     - `result_method`: must be `comment`; any other value is ignored and treated as `comment`
+   - Precedence:
+     1. Explicit user instruction in current conversation
+     2. Local `.npt.json`
+     3. `GLOBAL_CONFIG`
+     4. Built-in defaults
 
 ---
 
@@ -69,7 +82,7 @@ Look for a page titled `NPT` in the results.
 The workspace is managed by NPT. Proceed to Phase B.
 
 Workspace root structure (only these 4 items should exist at root level):
-- `NPT` — system info page + session logs
+- `NPT` — system hub page with child databases: `配置项`, `系统信息`, `会话日志`
 - `项目` — page containing each project's TODO database as direct children (one database per project)
 - `概要` — database tracking project status, summaries, and sync history
 - `IDEA` — database for cross-project ideas and capability insights
@@ -136,7 +149,14 @@ Before reading `.npt.json`, validate the current working directory is a concrete
     3. fill initial checklist tasks in Notion and set them to `待办`,
     4. run `npt` again to execute.
 
-### B1: Read Local Config
+### B1: Read Global + Local Config
+
+Before reading local `.npt.json`, read `NPT` page `配置项` database and build `GLOBAL_CONFIG`.
+
+- Parse each config row as `Key` -> `Value`.
+- Recognize `language`, `auto_mode`, `max_tags`, `session_log`, `result_method`.
+- If `result_method` is not `comment`, emit a warning and force `comment`.
+- Clamp `max_tags` to at most `15`.
 
 Check if `.npt.json` exists in the current working directory.
 
@@ -150,7 +170,7 @@ If `.npt.json` exists, read it. Expected format:
   "last_discovery_at": "2026-02-15T20:40:00Z"
 }
 ```
-`auto_mode` is optional (defaults to `false`).
+`auto_mode` is optional. If missing, inherit from `GLOBAL_CONFIG.auto_mode` (default `false`).
 `known_task_page_ids` and `last_discovery_at` are optional discovery cache fields.
 
 If `.npt.json` does NOT exist, derive the project name from the basename of the current working directory.
@@ -172,7 +192,7 @@ Find the `概要` database, then query it for an entry matching the project name
    - Database schema:
      - **任务** (title)
      - **状态** (select) — `待办`, `队列中`, `进行中`, `需要更多信息`, `已阻塞`, `已完成`
-     - **标签** (multi_select) — 0-5 tags auto-generated on completion (keep total tag types ≤ 15)
+     - **标签** (multi_select) — 0-5 tags auto-generated on completion (keep total tag types ≤ `min(15, GLOBAL_CONFIG.max_tags)`)
      - **想法引用** (relation to `IDEA`) — optional links to related ideas
      - **上次同步** (last_edited_time)
 2. Register the project in the `概要` database:
@@ -231,7 +251,7 @@ If argument is `status`, display the TODO list in a formatted table and stop.
 
 ### C2: Confirm with User
 
-If `.npt.json` has `"auto_mode": true`, skip confirmation entirely.
+If effective `auto_mode` is `true` (resolved via precedence), skip confirmation entirely.
 
 Otherwise, present the TODO list and ask:
 
@@ -263,7 +283,8 @@ For each selected TODO item:
    - Assign 0-5 标签 (reuse existing tags when possible)
    - Result comment text must use the resolved preferred language from Global Interaction Rules.
    - Must write result summary as a comment. Do NOT use toggle/content fallback.
-   - If MCP comment API fails, use `scripts/notion_api.py create-comment` with `NOTION_API_KEY`.
+   - Prefer `scripts/notion_api.py create-comment` with `NOTION_API_KEY` first so comment author is the NPT integration (for inbox routing/audit consistency).
+   - If REST comment path is unavailable or fails, fallback to MCP comment API.
    - If comment still cannot be written, set 状态 → `已阻塞` and report `BLOCKED: cannot write required comment`.
 
 ### C4: Error Handling
@@ -287,7 +308,7 @@ After all selected TODOs are processed:
    - Replace the page content with a living ~100-character project summary/slogan (not a session log).
 3. Append a short session entry to:
    - The project's TODO database page content (above the table)
-   - The `NPT` page Session Log
+   - The `NPT` page Session Log (only when effective `session_log` is not `false`)
 
 ---
 

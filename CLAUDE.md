@@ -21,6 +21,7 @@ AGENTS.md                      — Codex compatibility
 - The `NPT` page is the workspace validation marker and system info hub.
 - All items within a registered TODO database are considered NPT-managed (database-level trust boundary).
 - The `.npt.json` file in target projects maps them to Notion databases. Optional `auto_mode` enables skipping confirmation by default.
+- Workspace-level defaults come from `NPT` page `配置项` (for example: `language`, `auto_mode`, `max_tags`, `session_log`, `result_method`).
 - Field names are localized (Chinese): 项目名称, 标签, 技术栈, 上次同步, 项目路径, 任务.
 - TODO database schema: 任务 (title), 状态 (select: 待办/队列中/进行中/需要更多信息/已阻塞/已完成), 标签 (multi_select, auto-generated on completion), 想法引用 (relation to IDEA, optional), 上次同步 (last_edited_time). `已阻塞` tasks are not auto-retried until manually unblocked by the user.
 
@@ -35,4 +36,4 @@ AGENTS.md                      — Codex compatibility
   - `IDEA` — standalone idea database for cross-project inspiration and capability insights
 - **TODO databases as direct children of `项目`**: Each project has one TODO database directly under `项目` (no intermediate page).
 - **Page content as description**: Task details are written in the page body, not a property.
-- **Results via comments/toggles**: Completion results are reported via Notion comments or toggle blocks.
+- **Results via comments only**: Completion results are always reported via Notion comments (no toggle fallback); prefer REST comment path with `NOTION_API_KEY` to keep the author as NPT integration.
